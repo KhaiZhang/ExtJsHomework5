@@ -1,0 +1,263 @@
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Hello World</title>
+    <link rel="stylesheet" type="text/css" href="css/ext-all.css"/>
+
+    <!-- GC -->
+    <!-- LIBS -->
+    <script type="text/javascript" src="ext-base.js"></script>
+    <!-- ENDLIBS -->
+    <script type="text/javascript" src="PagingMemoryProxy.js"></script>
+    <script type="text/javascript" src="ext-all.js"></script>
+    <script>
+      Ext.QuickTips.init();  // enable tooltips
+      Ext.onReady(function(){
+        var data = [
+            ['san','A1','male','18','2000-01-01','th.jpg'],
+            ['tom','A1','female','18','2000-12-01','th.jpg'],
+            ['lux','A1','male','19','1999-08-01','th.jpg'],
+            ['aki','A2','male','18','2000-01-01','th.jpg'],
+            ['cur','A2','female','20','1998-11-01','th.jpg'],
+            ['kod','A3','male','18','2000-06-01','th.jpg'],
+            ['tox','A4','female','18','2000-07-01','th.jpg'],
+        ]
+        // var store = new Ext.data.Store({
+        //     id:'store',
+        //     autoSave:true,
+        //     proxy:new Ext.data.MemoryProxy(data),
+        //     reader: new Ext.data.ArrayReader({},[
+        //         {name:'name'},
+        //         {name:'class'},
+        //         {name:'sex'},
+        //         {name:'age'},
+        //         {name:'barthday'},
+        //         {name:'avatar'}
+        //     ]),
+        // })
+        var sm = new Ext.grid.CheckboxSelectionModel()
+
+        var groupStore = new Ext.data.GroupingStore({
+          id:'groupStore',
+          proxy:new Ext.data.MemoryProxy(data),
+          reader: new Ext.data.ArrayReader({},[
+            {name:'name'},
+            {name:'class'},
+            {name:'sex'},
+            {name:'age'},
+            {name:'barthday'},
+            {name:'avatar'}
+        ]),
+          groupField:'',
+          // sortInfo:{field:'name',direction:'ASC'}
+        })
+
+
+        let addStdWin = new Ext.Window({
+          id:'addStdWin',
+          hidden:true,
+          closeAction:'hide',
+          title:'输入学生信息',
+          width:250,
+          items:[
+            {
+              id:'studentForm',
+              xtype:'form',
+              defaultType:'textfield',
+              items:[
+                {
+                  id:'name',
+                  fieldLabel:'name'
+                },
+                {
+                  id:'class',
+                  fieldLabel:'class'
+                },
+                {
+                  id:'sex',
+                  fieldLabel:'sex'
+                },
+                {
+                  id:'age',
+                  fieldLabel:'age'
+                },
+                {
+                  id:'barthday',
+                  fieldLabel:'barthday'
+                }
+              ],
+              buttons:[
+                {
+                  text:'确定',
+                  handler:function(){
+                    let select = Ext.getCmp('grid').getSelectionModel().getSelections();
+                    let row = 0;
+                    if(!Ext.isEmpty(select))
+                    {
+                      row  = groupStore.proxy.data.indexOf(select[0].json)
+                    }
+                      let values = Ext.getCmp('studentForm').form.getValues()
+                      values.avatar = 'th.jpg'
+                      let currentValues = []
+                      currentValues.push(values.name)
+                      currentValues.push(values.class)
+                      currentValues.push(values.sex)
+                      currentValues.push(values.age)
+                      currentValues.push(values.barthday)
+                      currentValues.push(values.avatar)
+                      data.push(currentValues)
+                      let arr = data;
+                      let last =arr.length-1;
+                      arr.splice(row, 1, ...arr.splice(last, 1, arr[row]))  
+                      // let record = new Ext.data.Record(values)
+                      // groupStore.insert(row,record)
+                      groupStore.load()
+                      Ext.getCmp('grid').view.refresh()
+                      Ext.getCmp('addStdWin').hide()
+                  }
+                }
+              ]
+            }
+          ]
+        })
+        let addStudent = function(){
+          Ext.getCmp('addStdWin').show();
+        }
+
+        let deleteStudent = function(){
+          let select = Ext.getCmp('grid').getSelectionModel().getSelections();
+          console.log(select)
+          select.forEach(e =>{
+            row  = groupStore.proxy.data.indexOf(select[0].json)
+            data.splice(row,1)
+            groupStore.load()
+          })
+        }
+
+        let groupByClass =function(){
+          if(Ext.isEmpty(Ext.getCmp('grid').getStore().groupField)){
+            Ext.getCmp('grid').getStore().groupField = 'class'
+          }
+          else{
+            Ext.getCmp('grid').getStore().groupField = ''
+          }
+          Ext.getCmp('grid').view.refresh()
+        }
+        let setAvatar = function(data){
+          return '<img src='+ data +' style="height:40px;width:40px">';
+        }
+
+        var cm = new Ext.grid.ColumnModel([
+            sm,
+            new Ext.grid.RowNumberer(),
+            { header: "名字", dataIndex: 'name',width: 100,sortable: true},
+            { header: "班级", dataIndex: 'class',width: 100,sortable: true},
+            { header: "性别",dataIndex: 'sex', width: 100},
+            { header: "年龄", dataIndex: 'age',width: 100},
+            { header: "生日", dataIndex: 'barthday',width: 100},
+            { header: "头像", dataIndex: 'avatar',width: 100,renderer:setAvatar}
+        ])
+        
+        let move = function(scope){
+          let select = Ext.getCmp('grid').getSelectionModel().getSelections();
+          let row  = groupStore.proxy.data.indexOf(select[0].json)
+          let arr =data
+          switch(scope.text){
+            case 'up':
+              if(row !== 0){
+                arr.splice(row, 1, ...arr.splice(row-1, 1, arr[row]))
+                groupStore.load()
+              }else {
+                Ext.Msg.alert('greeting','这个操作可不行')
+              }
+              break;
+            case 'down':
+              arr.splice(row, 1, ...arr.splice(row+1, 1, arr[row]))
+              groupStore.load()
+              break;
+            case 'first':
+              arr.splice(0, 1, ...arr.splice(row, 1, arr[0]))
+              groupStore.load()
+              break;
+            case 'last':
+              let last = arr.length-1;
+              arr.splice(last, 1, ...arr.splice(row, 1, arr[last]))
+              groupStore.load()
+              break;
+          }
+        }
+        let menu = new Ext.menu.Menu({
+          items:[
+            {
+              text:'up',
+              handler:move.createDelegate()
+            },
+            {
+              text:'down',
+              handler:move.createDelegate()
+            },
+            {
+              text:'first',
+              handler:move.createDelegate()
+            },
+            {
+              text:'last',
+              handler:move.createDelegate()
+            }
+          ]
+        })
+
+        groupStore.load()
+        // store.load()
+        var grid = new Ext.grid.EditorGridPanel({
+            id:'grid',
+            renderTo:Ext.getBody(),
+            autoHeight: true,
+            // store:store,
+            store:groupStore,
+            view:new Ext.grid.GroupingView(), 
+            cm:cm,
+            sm:sm,
+            contextMenu:menu,
+            // sm: new Ext.grid.RowSelectionModel({singleSelect:true}),
+            bbar:new Ext.PagingToolbar({
+              pageSize:5,
+              store:groupStore,
+              displayInfo:true,
+              displayMsg:'显示第{0}条'
+            }),
+            listeners:{
+              contextmenu:function(e){
+                e.preventDefault();
+	              this.contextMenu.showAt(e.getXY());
+              }
+            },
+            bbar:[
+              {
+                xtype:'button',
+                text:'groupByClass',
+                handler:groupByClass.createDelegate(this)
+              },
+              '->',
+              {
+                xtype:'button',
+                text:'add',
+                handler:addStudent.createDelegate(this)
+              },'-',
+              {
+                xtype:'button',
+                text:'delete',
+                handler:deleteStudent.createDelegate(this)
+              }
+            ]
+          })
+          
+      });           
+    </script>
+</head>
+<style>
+</style>
+<body id="docbody">
+    <div id='test'></div>
+</body>
+</html>
